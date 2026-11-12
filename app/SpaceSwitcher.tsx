@@ -17,6 +17,7 @@ import { PROJECT_LIST_ACTION_BUTTON_CLASS } from "@/components/ui/sidebar-row-cl
 import { EditSpacesDialog } from "./EditSpacesDialog.js";
 import { DEFAULT_SPACE_ICON } from "./space-icons.js";
 import { useSpaceTint } from "./space-tint.js";
+import { useLastThreadPerSpace } from "./last-thread.js";
 
 const ALL_PROJECTS_ICON = "GridView";
 import {
@@ -95,6 +96,7 @@ export function SpaceSwitcher(_props: { controlSize: number }) {
     spaces.find((space) => space.id === state?.activeSpaceId) ?? null;
   const label = state === null ? "Spaces" : (active?.name ?? "All projects");
   useSpaceTint(active?.tint ?? null);
+  useLastThreadPerSpace(state);
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

@@ -22,6 +22,8 @@ On first run Spaces creates two empty spaces, Work and Personal, and changes not
 | Command palette | Switch to space N, Next space, Previous space, Show all projects, Edit Spaces… |
 | CLI | `bb space list`, `bb space <name\|number>`, `bb space off`, `bb space add [--space <name>] <folder>...` |
 
+Switching to a space reopens the thread you last had open in it, whether you switch from the menu, a shortcut, the palette or `bb space`. A thread that was archived or deleted since is skipped. The last thread per space is kept in the window's local storage.
+
 A space's **Tint** colors the sidebar while the space is active: its background, hover and borders, and the sidebar's text. The content area keeps your theme's colors, and the tint works on top of any theme, light or dark. **None** keeps the sidebar as the theme draws it.
 
 A project in no space shows in every space. bb's built-in personal project (threads without a project) is listed under **Threads** and is always visible.
