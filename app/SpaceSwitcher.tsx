@@ -127,7 +127,12 @@ export function SpaceSwitcher(_props: { controlSize: number }) {
             />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={6} className="min-w-52">
+        <DropdownMenuContent
+          align="start"
+          sideOffset={6}
+          // Same 1px gap as thread rows in the sidebar list (space-y-px).
+          className="min-w-52 space-y-px"
+        >
           {spaces.map((space, index) => {
             const isActive = space.id === state?.activeSpaceId;
             const shortcut = spaceShortcutLabel(index);
