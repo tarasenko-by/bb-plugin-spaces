@@ -2,11 +2,12 @@ Keep work and personal projects in one bb without seeing both at once. Pick a sp
 
 ## What you get
 
-- A space switcher in the sidebar header, with New thread on its own row underneath. Each space has a name and an icon.
+- A space switcher in the sidebar header, with New thread on its own row underneath. Each space has a name, an icon and an optional tint.
 - A menu with every space, a checkmark on the current one, **All projects** to leave spaces, and **Edit Spaces…**.
 - Ctrl + Alt + 1 to 9 (⌃ ⌥ 1 to 9 on macOS) switch to the first nine spaces; bb already uses Ctrl/⌘ + 1–9 to jump between threads. The command palette also has Next space, Previous space, Show all projects and Edit Spaces.
-- **Edit Spaces…** sets each space's name, icon, order and projects. A project in no space shows in every space.
+- **Edit Spaces…** sets each space's name, icon, tint, order and projects. A project in no space shows in every space.
 - Drag folders from Explorer or Finder into Edit Spaces: each folder becomes a project in the selected space, and a folder that is already a project is reused.
+- Eight tints (blue, teal, green, yellow, orange, red, pink, purple) color the sidebar of the active space, so Work and Personal look different at a glance. The content area keeps your theme's colors, and the tint follows any theme in light and dark mode.
 - 33 space icons in three rows (work, making and learning, life), including a rocket, briefcase, camera and airplane from the free Hugeicons set.
 - `bb space list`, `bb space <name|number>`, `bb space off` and `bb space add [--space <name>] <folder>...` do the same from a terminal or an agent.
 

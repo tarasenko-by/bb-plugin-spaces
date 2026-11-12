@@ -18,6 +18,15 @@ import { getRpc, setSpacesState } from "./spaces-store.js";
 import { DEFAULT_SPACE_ICON, SPACE_ICONS } from "./space-icons.js";
 import { addDroppedFolders, useFolderDropTarget } from "./folder-drop.js";
 import { spaceShortcutLabel } from "./shortcuts.js";
+import {
+  previewSpaceTint,
+  SIDEBAR_SCOPE_ATTR,
+  SPACE_TINTS,
+  tintColor,
+  type SpaceTint,
+} from "./space-tint.js";
+
+const TINT_NAMES = Object.keys(SPACE_TINTS) as SpaceTint[];
 
 const MAX_SPACES = 9;
 
@@ -46,7 +55,6 @@ export function EditSpacesDialog({
   const [selectedId, setSelectedId] = useState<string | null>(
     state.activeSpaceId ?? state.spaces[0]?.id ?? null,
   );
-  const [saving, setSaving] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const [showOthersInMore, setShowOthersInMore] = useState(
     state.showOthersInMore,
@@ -62,6 +70,13 @@ export function EditSpacesDialog({
   }, [open]);
 
   const selected = draft.find((space) => space.id === selectedId) ?? null;
+
+  // While the dialog is open the app shows the selected space's tint.
+  const selectedTint = selected ? (selected.tint ?? null) : undefined;
+  useEffect(() => {
+    previewSpaceTint(open ? selectedTint : undefined);
+  }, [open, selectedTint]);
+  useEffect(() => () => previewSpaceTint(undefined), []);
   const update = (id: string, patch: Partial<Space>) =>
     setDraft((spaces) =>
       spaces.map((space) => (space.id === id ? { ...space, ...patch } : space)),
@@ -105,24 +120,36 @@ export function EditSpacesDialog({
   const valid =
     draft.length > 0 && draft.every((space) => space.name.trim().length > 0);
 
-  const save = async () => {
+  // Close at once and save in the background: the server also rewrites the
+  // thread list's hidden groups and may queue behind a folder lookup, so
+  // waiting for it left the dialog open after Save.
+  const save = () => {
+    if (!valid) return;
+    // RPC input must be JSON: drop fields cleared to undefined (Tint: None).
+    const spaces = draft.map(
+      (space) =>
+        Object.fromEntries(
+          Object.entries({ ...space, name: space.name.trim() }).filter(
+            ([, value]) => value !== undefined,
+          ),
+        ) as Space,
+    );
+    setSpacesState({ ...state, spaces, showOthersInMore });
+    onOpenChange(false);
     const rpc = getRpc();
-    if (!rpc || !valid) return;
-    setSaving(true);
-    try {
-      const next = await rpc.call("spaces_save", {
-        spaces: draft.map((space) => ({ ...space, name: space.name.trim() })),
-        showOthersInMore,
-      });
-      setSpacesState(next);
-      onOpenChange(false);
-    } catch (cause) {
-      toast.error(
-        `Spaces: ${cause instanceof Error ? cause.message : String(cause)}`,
-      );
-    } finally {
-      setSaving(false);
+    if (!rpc) {
+      toast.error("Spaces: not connected, changes were not saved");
+      return;
     }
+    rpc.call("spaces_save", { spaces, showOthersInMore }).then(
+      setSpacesState,
+      (cause: unknown) => {
+        toast.error(
+          `Spaces: ${cause instanceof Error ? cause.message : String(cause)}`,
+        );
+        rpc.call("state_get").then(setSpacesState, () => undefined);
+      },
+    );
   };
 
   // Folders dropped on the Projects list become projects, checked in the
@@ -168,7 +195,10 @@ export function EditSpacesDialog({
         </DialogHeader>
 
         <div className="flex min-h-80 gap-4">
-          <div className="flex w-48 shrink-0 flex-col gap-1">
+          {/* Styled like bb's sidebar, so it shows the space's tint too. */}
+          <div
+            {...{ [SIDEBAR_SCOPE_ATTR]: "" }}
+            className="flex w-48 shrink-0 flex-col gap-px rounded-lg border border-sidebar-border bg-sidebar p-1.5 text-sidebar-foreground">
             {draft.map((space, index) => (
               <button
                 key={space.id}
@@ -177,8 +207,8 @@ export function EditSpacesDialog({
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm",
                   space.id === selectedId
-                    ? "bg-state-active font-medium"
-                    : "hover:bg-state-hover",
+                    ? "bg-sidebar-accent font-medium"
+                    : "hover:bg-sidebar-accent",
                 )}
               >
                 <Icon
@@ -198,7 +228,7 @@ export function EditSpacesDialog({
               type="button"
               variant="ghost"
               size="sm"
-              className="justify-start gap-2 text-muted-foreground"
+              className="justify-start gap-2 px-2 text-muted-foreground hover:bg-sidebar-accent"
               disabled={draft.length >= MAX_SPACES}
               onClick={addSpace}
             >
@@ -272,6 +302,43 @@ export function EditSpacesDialog({
                         onClick={() => update(selected.id, { icon: name })}
                       >
                         <Icon name={name} aria-hidden="true" className="size-4" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Tint
+                </span>
+                <div className="flex flex-wrap items-center gap-1">
+                  {[null, ...TINT_NAMES].map((tint) => {
+                    const current = (selected.tint ?? null) === tint;
+                    const label = tint
+                      ? tint[0]!.toUpperCase() + tint.slice(1)
+                      : "None";
+                    return (
+                      <Button
+                        key={tint ?? "none"}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Tint ${label}`}
+                        aria-pressed={current}
+                        className={cn("size-8", current && "bg-state-active")}
+                        onClick={() =>
+                          update(selected.id, { tint: tint ?? undefined })
+                        }
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "size-4 rounded-full",
+                            tint === null && "border border-input",
+                          )}
+                          style={tint ? { background: tintColor(tint) } : undefined}
+                        />
                       </Button>
                     );
                   })}
@@ -371,10 +438,10 @@ export function EditSpacesDialog({
           </Button>
           <Button
             type="button"
-            disabled={!valid || saving}
-            onClick={() => void save()}
+            disabled={!valid}
+            onClick={save}
           >
-            {saving ? "Saving…" : "Save"}
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>

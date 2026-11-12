@@ -17,6 +17,10 @@ const spaceSchema = z.object({
   icon: z.string().regex(/^[A-Za-z0-9]{1,40}$/).optional(),
   /** Legacy field from v0.1; no longer shown. */
   color: z.string().regex(COLOR_RE).optional(),
+  /** Hue mixed into the sidebar while the space is active. */
+  tint: z
+    .enum(["blue", "teal", "green", "yellow", "orange", "red", "pink", "purple"])
+    .optional(),
   projectIds: z.array(z.string().min(1).max(100)).max(500),
 });
 export type Space = z.infer<typeof spaceSchema>;

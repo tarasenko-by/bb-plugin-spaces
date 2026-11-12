@@ -5,7 +5,7 @@ Arc-style spaces for the [bb](https://github.com/get-bb/bb) sidebar. Put your pr
 ## Install
 
 ```sh
-bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.3.0
+bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.4.0
 ```
 
 Or find **Spaces** in bb's plugin marketplace. If another navigation plugin is active, pick **Rail with Spaces** under Settings → Appearance → Navigation.
@@ -18,9 +18,11 @@ On first run Spaces creates two empty spaces, Work and Personal, and changes not
 | --- | --- |
 | Sidebar header | Space button with its icon; click for the menu |
 | Menu | Spaces (Ctrl + Alt + 1…9 on Windows and Linux, ⌃ ⌥ 1…9 on macOS), **All projects**, **Edit Spaces…** |
-| Edit Spaces | Name, icon, order and projects of each space; drag folders in to add projects; the More setting |
+| Edit Spaces | Name, icon, tint, order and projects of each space; drag folders in to add projects; the More setting |
 | Command palette | Switch to space N, Next space, Previous space, Show all projects, Edit Spaces… |
 | CLI | `bb space list`, `bb space <name\|number>`, `bb space off`, `bb space add [--space <name>] <folder>...` |
+
+A space's **Tint** colors the sidebar while the space is active: its background, hover and borders, and the sidebar's text. The content area keeps your theme's colors, and the tint works on top of any theme, light or dark. **None** keeps the sidebar as the theme draws it.
 
 A project in no space shows in every space. bb's built-in personal project (threads without a project) is listed under **Threads** and is always visible.
 
