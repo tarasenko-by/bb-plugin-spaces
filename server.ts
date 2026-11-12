@@ -32,12 +32,17 @@ const projectSchema = z.object({
 });
 export type SpaceProject = z.infer<typeof projectSchema>;
 
+const switcherStyleSchema = z.enum(["menu", "icons"]);
+export type SwitcherStyle = z.infer<typeof switcherStyleSchema>;
+
 const stateSchema = z.object({
   spaces: z.array(spaceSchema),
   activeSpaceId: z.string().nullable(),
   projects: z.array(projectSchema),
   /** Show other spaces' projects under the thread list's More. */
   showOthersInMore: z.boolean(),
+  /** Sidebar header: a dropdown with the current space, or a row of icons. */
+  switcherStyle: switcherStyleSchema,
   /** True when the user hid groups themselves (More must stay reachable). */
   hasUserHiddenGroups: z.boolean(),
 });
@@ -82,6 +87,7 @@ export const rpcContract = defineRpcContract({
     input: z.object({
       spaces: z.array(spaceSchema).min(1).max(9),
       showOthersInMore: z.boolean().optional(),
+      switcherStyle: switcherStyleSchema.optional(),
     }),
     output: stateSchema,
   },
@@ -94,6 +100,7 @@ const KV_SPACES = "spaces";
 const KV_ACTIVE = "activeSpaceId";
 const KV_MANAGED = "managedHiddenGroups";
 const KV_SHOW_MORE = "showOthersInMore";
+const KV_SWITCHER_STYLE = "switcherStyle";
 const KV_PREV_MODE = "previousOrganizationMode";
 
 const THREAD_LIST = "thread-list";
@@ -188,6 +195,10 @@ export default async function plugin(bb: BbPluginApi) {
       activeSpaceId: await readActive(spaces),
       projects,
       showOthersInMore: (await bb.storage.kv.get<boolean>(KV_SHOW_MORE)) ?? false,
+      switcherStyle:
+        (await bb.storage.kv.get<string>(KV_SWITCHER_STYLE)) === "icons"
+          ? "icons"
+          : "menu",
       hasUserHiddenGroups,
     };
   }
@@ -287,6 +298,7 @@ export default async function plugin(bb: BbPluginApi) {
   async function saveSpaces(
     spaces: Space[],
     showOthersInMore: boolean | undefined,
+    switcherStyle: SwitcherStyle | undefined,
   ): Promise<SpacesState> {
     return serial(async () => {
       const ids = new Set(spaces.map((s) => s.id));
@@ -294,6 +306,9 @@ export default async function plugin(bb: BbPluginApi) {
       await bb.storage.kv.set(KV_SPACES, spaces);
       if (showOthersInMore !== undefined) {
         await bb.storage.kv.set(KV_SHOW_MORE, showOthersInMore);
+      }
+      if (switcherStyle !== undefined) {
+        await bb.storage.kv.set(KV_SWITCHER_STYLE, switcherStyle);
       }
       const active = await readActive(spaces);
       if (active !== null) {
@@ -505,7 +520,7 @@ export default async function plugin(bb: BbPluginApi) {
             }
           : space,
       );
-      return { state: await saveSpaces(next, undefined), results };
+      return { state: await saveSpaces(next, undefined, undefined), results };
     }
     const state = await getState();
     bb.realtime.publish(SPACES_CHANGED, { activeSpaceId: state.activeSpaceId });
@@ -517,8 +532,8 @@ export default async function plugin(bb: BbPluginApi) {
     state_get: () => getState(),
     space_switch: ({ spaceId }) => switchTo(spaceId),
     spaces_off: () => showAll(),
-    spaces_save: ({ spaces, showOthersInMore }) =>
-      saveSpaces(spaces, showOthersInMore),
+    spaces_save: ({ spaces, showOthersInMore, switcherStyle }) =>
+      saveSpaces(spaces, showOthersInMore, switcherStyle),
   });
 
   const usage = [

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { Space, SpacesState } from "../server";
+import type { Space, SpacesState, SwitcherStyle } from "../server";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,6 +27,11 @@ import {
 } from "./space-tint.js";
 
 const TINT_NAMES = Object.keys(SPACE_TINTS) as SpaceTint[];
+
+const SWITCHER_STYLES: { id: SwitcherStyle; label: string; icon: string }[] = [
+  { id: "menu", label: "Menu", icon: "ChevronDown" },
+  { id: "icons", label: "Icons", icon: "GridView" },
+];
 
 const MAX_SPACES = 9;
 
@@ -59,12 +64,16 @@ export function EditSpacesDialog({
   const [showOthersInMore, setShowOthersInMore] = useState(
     state.showOthersInMore,
   );
+  const [switcherStyle, setSwitcherStyle] = useState<SwitcherStyle>(
+    state.switcherStyle,
+  );
 
   // Reset the draft every time the dialog opens.
   useEffect(() => {
     if (!open) return;
     setDraft(state.spaces);
     setShowOthersInMore(state.showOthersInMore);
+    setSwitcherStyle(state.switcherStyle);
     setSelectedId(state.activeSpaceId ?? state.spaces[0]?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -134,14 +143,14 @@ export function EditSpacesDialog({
           ),
         ) as Space,
     );
-    setSpacesState({ ...state, spaces, showOthersInMore });
+    setSpacesState({ ...state, spaces, showOthersInMore, switcherStyle });
     onOpenChange(false);
     const rpc = getRpc();
     if (!rpc) {
       toast.error("Spaces: not connected, changes were not saved");
       return;
     }
-    rpc.call("spaces_save", { spaces, showOthersInMore }).then(
+    rpc.call("spaces_save", { spaces, showOthersInMore, switcherStyle }).then(
       setSpacesState,
       (cause: unknown) => {
         toast.error(
@@ -409,6 +418,40 @@ export function EditSpacesDialog({
               </div>
             </div>
           ) : null}
+        </div>
+
+        <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="font-medium">Sidebar header</span>
+            <span className="text-xs text-muted-foreground">
+              Menu shows the current space; Icons shows every space that fits,
+              with All projects and Edit Spaces always at the end.
+            </span>
+          </span>
+          <div
+            role="radiogroup"
+            aria-label="Sidebar header"
+            className="flex shrink-0 gap-0.5 rounded-md bg-muted p-0.5"
+          >
+            {SWITCHER_STYLES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={switcherStyle === option.id}
+                onClick={() => setSwitcherStyle(option.id)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium",
+                  switcherStyle === option.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon name={option.icon} aria-hidden="true" className="size-3.5" />
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-2.5 text-sm">

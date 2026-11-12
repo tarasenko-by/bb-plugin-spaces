@@ -5,7 +5,7 @@ Arc-style spaces for the [bb](https://github.com/get-bb/bb) sidebar. Put your pr
 ## Install
 
 ```sh
-bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.4.0
+bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.5.0
 ```
 
 Or find **Spaces** in bb's plugin marketplace. If another navigation plugin is active, pick **Rail with Spaces** under Settings → Appearance → Navigation.
@@ -16,13 +16,15 @@ On first run Spaces creates two empty spaces, Work and Personal, and changes not
 
 | Where | What |
 | --- | --- |
-| Sidebar header | Space button with its icon; click for the menu |
+| Sidebar header | **Menu**: the current space with its icon; click for the menu. **Icons**: one icon per space, then All projects and Edit Spaces |
 | Menu | Spaces (Ctrl + Alt + 1…9 on Windows and Linux, ⌃ ⌥ 1…9 on macOS), **All projects**, **Edit Spaces…** |
-| Edit Spaces | Name, icon, tint, order and projects of each space; drag folders in to add projects; the More setting |
+| Edit Spaces | Name, icon, tint, order and projects of each space; drag folders in to add projects; the sidebar header style; the More setting |
 | Command palette | Switch to space N, Next space, Previous space, Show all projects, Edit Spaces… |
 | CLI | `bb space list`, `bb space <name\|number>`, `bb space off`, `bb space add [--space <name>] <folder>...` |
 
 Switching to a space reopens the thread you last had open in it, whether you switch from the menu, a shortcut, the palette or `bb space`. A thread that was archived or deleted since is skipped. The last thread per space is kept in the window's local storage.
+
+Choose the sidebar header in Edit Spaces → **Sidebar header**. **Menu** (the default) shows the current space as a button with a menu. **Icons** shows a row of space icons with a tooltip each, and **All projects** and **Edit Spaces…** at the end. If the sidebar is too narrow for every space, the row leaves the last ones out but keeps the active space; the hidden ones stay reachable by shortcut, palette and `bb space`.
 
 A space's **Tint** colors the sidebar while the space is active: its background, hover and borders, and the sidebar's text. The content area keeps your theme's colors, and the tint works on top of any theme, light or dark. **None** keeps the sidebar as the theme draws it.
 
