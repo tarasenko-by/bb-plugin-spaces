@@ -5,7 +5,7 @@ Arc-style spaces for the [bb](https://github.com/get-bb/bb) sidebar. Put your pr
 ## Install
 
 ```sh
-bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.1.0
+bb plugin install git:https://github.com/tarasenko-by/bb-plugin-spaces.git@^0.3.0
 ```
 
 Or find **Spaces** in bb's plugin marketplace. If another navigation plugin is active, pick **Rail with Spaces** under Settings → Appearance → Navigation.
