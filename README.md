@@ -18,11 +18,17 @@ On first run Spaces creates two empty spaces, Work and Personal, and changes not
 | --- | --- |
 | Sidebar header | Space button with its icon; click for the menu |
 | Menu | Spaces (⌃⌥1…⌃⌥9), **All projects**, **Edit Spaces…** |
-| Edit Spaces | Name, icon, order and projects of each space; the More setting |
+| Edit Spaces | Name, icon, order and projects of each space; drag folders in to add projects; the More setting |
 | Command palette | Switch to space N, Next space, Previous space, Show all projects, Edit Spaces… |
-| CLI | `bb space list`, `bb space <name\|number>`, `bb space off` |
+| CLI | `bb space list`, `bb space <name\|number>`, `bb space off`, `bb space add [--space <name>] <folder>...` |
 
 A project in no space shows in every space. bb's built-in personal project (threads without a project) is listed under **Threads** and is always visible.
+
+## Folders to projects
+
+Open **Edit Spaces…**, select a space and drag one or several folders from Explorer or Finder onto **Drag folders here** above its project list. Each folder becomes a bb project, checked in that space; **Save** keeps the change. A folder that is already a project is reused, not duplicated.
+
+bb does not give plugins the full path of a dropped folder, only its name, so Spaces finds the folder on the machine: among git repositories bb discovers, next to the other dropped folders it already found, then in a bounded walk (four levels) of your home folder and drives, skipping hidden folders, `node_modules`, `AppData` and system folders. If two folders share a name, the most recently active git repository wins. If one is not found, add it with **New project** or pass its path to `bb space add`.
 
 ## How it works
 

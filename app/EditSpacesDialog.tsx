@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getRpc, setSpacesState } from "./spaces-store.js";
 import { DEFAULT_SPACE_ICON, SPACE_ICONS } from "./space-icons.js";
+import { addDroppedFolders, useFolderDropTarget } from "./folder-drop.js";
 
 const MAX_SPACES = 9;
 
@@ -122,6 +123,25 @@ export function EditSpacesDialog({
       setSaving(false);
     }
   };
+
+  // Folders dropped on the Projects list become projects, checked in the
+  // selected space of the draft (saved with the rest on Save).
+  const drop = useFolderDropTarget((folders) => {
+    const target = selectedId;
+    void addDroppedFolders(folders, null).then((result) => {
+      if (!result || target === null) return;
+      const ids = result.results
+        .map((r) => r.projectId)
+        .filter((id): id is string => id !== undefined);
+      setDraft((spaces) =>
+        spaces.map((space) =>
+          space.id === target
+            ? { ...space, projectIds: [...new Set([...space.projectIds, ...ids])] }
+            : space,
+        ),
+      );
+    });
+  });
 
   const ownerOf = (projectId: string) =>
     draft.filter((space) => space.projectIds.includes(projectId));
@@ -257,11 +277,37 @@ export function EditSpacesDialog({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-col gap-2">
+              <div
+                className={cn(
+                  "-m-1 flex min-h-0 flex-col gap-2 rounded-md p-1 transition-colors",
+                )}
+                data-testid="spaces-edit-folder-drop"
+                {...drop.handlers}
+              >
                 <span className="text-xs font-medium text-muted-foreground">
                   Projects
                 </span>
-                <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-md border border-dashed px-3 py-3 text-center text-xs text-muted-foreground transition-colors",
+                    drop.over
+                      ? "border-ring bg-state-hover text-foreground"
+                      : "border-border",
+                  )}
+                >
+                  <Icon name="FolderPlus" aria-hidden="true" className="size-5" />
+                  <span className="font-medium">
+                    {drop.over
+                      ? `Drop to add to ${selected.name || "this space"}`
+                      : "Drag folders here"}
+                  </span>
+                  <span>
+                    Each folder becomes a project in{" "}
+                    {selected.name || "this space"}
+                  </span>
+                </div>
+                <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
                   {state.projects.map((project) => {
                     const checked = selected.projectIds.includes(project.id);
                     const others = ownerOf(project.id)

@@ -39,7 +39,35 @@ const stateSchema = z.object({
 });
 export type SpacesState = z.infer<typeof stateSchema>;
 
+/** A folder dropped from the file manager. Browsers hide full paths, so
+ * usually only `name` is known and the server finds the folder on disk. */
+const droppedFolderSchema = z.object({
+  name: z.string().trim().min(1).max(255),
+  path: z.string().trim().min(1).max(1024).optional(),
+});
+export type DroppedFolder = z.infer<typeof droppedFolderSchema>;
+
+const folderResultSchema = z.object({
+  name: z.string(),
+  status: z.enum(["created", "existing", "not_found", "failed"]),
+  path: z.string().optional(),
+  projectId: z.string().optional(),
+  message: z.string().optional(),
+});
+export type FolderResult = z.infer<typeof folderResultSchema>;
+
 export const rpcContract = defineRpcContract({
+  folders_add: {
+    input: z.object({
+      folders: z.array(droppedFolderSchema).min(1).max(50),
+      /** Space to put the projects in; omit to only create the projects. */
+      spaceId: z.string().optional(),
+    }),
+    output: z.object({
+      state: stateSchema,
+      results: z.array(folderResultSchema),
+    }),
+  },
   state_get: { input: z.null(), output: stateSchema },
   space_switch: {
     input: z.object({ spaceId: z.string() }),
@@ -144,10 +172,17 @@ export default async function plugin(bb: BbPluginApi) {
     } catch {
       hasUserHiddenGroups = true; // unknown: keep More reachable
     }
+    const projects = await listProjects();
+    // Drop ids of projects deleted since they were put in a space.
+    const known = new Set(projects.map((project) => project.id));
+    const live = spaces.map((space) => ({
+      ...space,
+      projectIds: space.projectIds.filter((id) => known.has(id)),
+    }));
     return {
-      spaces,
+      spaces: live,
       activeSpaceId: await readActive(spaces),
-      projects: await listProjects(),
+      projects,
       showOthersInMore: (await bb.storage.kv.get<boolean>(KV_SHOW_MORE)) ?? false,
       hasUserHiddenGroups,
     };
@@ -266,7 +301,215 @@ export default async function plugin(bb: BbPluginApi) {
     });
   }
 
+  // ---- Folders → projects --------------------------------------------------
+
+  const SKIP_DIRS = new Set([
+    "node_modules", "appdata", "application data", "library", "windows",
+    "program files", "program files (x86)", "programdata", "$recycle.bin",
+    "system volume information", "dist", "build",
+  ]);
+  const SEARCH_DEPTH = 4;
+  const SEARCH_DIR_BUDGET = 1500;
+
+  const normPath = (path: string) =>
+    path.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const baseName = (path: string) =>
+    path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
+  const parentOf = (path: string) => {
+    const trimmed = path.replace(/[\\/]+$/, "");
+    const index = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+    return index > 0 ? trimmed.slice(0, index) : null;
+  };
+
+  async function primaryHostId(): Promise<string> {
+    const config = await bb.sdk.system.config();
+    if (config.primaryHostId) return config.primaryHostId;
+    const hosts = await bb.sdk.hosts.list();
+    const host = hosts.find((h) => h.status === "connected") ?? hosts[0];
+    if (!host) throw new Error("No machine is connected");
+    return host.id;
+  }
+
+  /**
+   * Find folders by name on the host: first among git repos bb discovers,
+   * then next to folders already found (a multi-folder drop usually comes
+   * from one parent), then a bounded walk from the home folder and drives.
+   */
+  async function resolveFolders(
+    hostId: string,
+    names: string[],
+  ): Promise<Map<string, string>> {
+    const found = new Map<string, string>();
+    const want = new Set(names.map((name) => name.toLowerCase()));
+    const missing = () => [...want].filter((key) => !found.has(key)).length;
+
+    try {
+      const discovered = await bb.sdk.hosts.experimental_discoverRepos({ hostId });
+      const repos = [...discovered.repos].sort((a, b) =>
+        b.lastActivityAt.localeCompare(a.lastActivityAt),
+      );
+      for (const repo of repos) {
+        const key = baseName(repo.path).toLowerCase();
+        if (want.has(key) && !found.has(key)) found.set(key, repo.path);
+      }
+    } catch (cause) {
+      bb.log.warn(`discoverRepos failed: ${String(cause)}`);
+    }
+
+    const listed = new Set<string>();
+    async function list(path: string | undefined) {
+      try {
+        const listing = await bb.sdk.hosts.directory({ hostId, path });
+        listed.add(normPath(listing.directory));
+        return listing;
+      } catch {
+        return null;
+      }
+    }
+    const matchIn = (entries: { kind: string; name: string; path: string }[]) => {
+      for (const entry of entries) {
+        if (entry.kind !== "directory") continue;
+        const key = entry.name.toLowerCase();
+        if (want.has(key) && !found.has(key)) found.set(key, entry.path);
+      }
+    };
+
+    // Siblings of folders already found.
+    if (missing() > 0) {
+      const parents = new Set(
+        [...found.values()].map(parentOf).filter((p): p is string => p !== null),
+      );
+      for (const parent of parents) {
+        const listing = await list(parent);
+        if (listing) matchIn(listing.entries);
+        if (missing() === 0) break;
+      }
+    }
+
+    // Breadth-first walk from home, then from the drive roots.
+    if (missing() > 0) {
+      const home = await list(undefined);
+      if (home) {
+        matchIn(home.entries);
+        const frontier: { path: string; depth: number }[] = [
+          ...home.entries
+            .filter((e) => e.kind === "directory" && !e.name.startsWith("."))
+            .filter((e) => !SKIP_DIRS.has(e.name.toLowerCase()))
+            .map((e) => ({ path: e.path, depth: 1 })),
+          ...home.roots.map((root) => ({ path: root, depth: 0 })),
+        ];
+        let budget = SEARCH_DIR_BUDGET;
+        while (frontier.length > 0 && missing() > 0 && budget > 0) {
+          const batch = frontier.splice(0, 8);
+          budget -= batch.length;
+          const listings = await Promise.all(
+            batch.map(async (item) => {
+              if (listed.has(normPath(item.path))) return null;
+              const listing = await list(item.path);
+              return listing ? { listing, depth: item.depth } : null;
+            }),
+          );
+          for (const entry of listings) {
+            if (!entry) continue;
+            matchIn(entry.listing.entries);
+            if (entry.depth >= SEARCH_DEPTH) continue;
+            for (const child of entry.listing.entries) {
+              if (child.kind !== "directory") continue;
+              const lower = child.name.toLowerCase();
+              if (lower.startsWith(".") || lower.startsWith("$")) continue;
+              if (SKIP_DIRS.has(lower)) continue;
+              frontier.push({ path: child.path, depth: entry.depth + 1 });
+            }
+          }
+        }
+      }
+    }
+    return found;
+  }
+
+  async function addFolders(
+    folders: DroppedFolder[],
+    spaceId: string | undefined,
+  ): Promise<{ state: SpacesState; results: FolderResult[] }> {
+    const hostId = await primaryHostId();
+    const unique = [
+      ...new Map(
+        folders.map((f) => [f.path ? normPath(f.path) : f.name.toLowerCase(), f]),
+      ).values(),
+    ];
+    const needLookup = unique.filter((f) => !f.path).map((f) => f.name);
+    const located =
+      needLookup.length > 0
+        ? await resolveFolders(hostId, needLookup)
+        : new Map<string, string>();
+
+    const existing = await bb.sdk.projects.list({ includePersonal: false });
+    const byPath = new Map<string, string>();
+    for (const project of existing) {
+      for (const source of project.sources ?? []) {
+        byPath.set(normPath(source.path), project.id);
+      }
+    }
+
+    const results: FolderResult[] = [];
+    for (const folder of unique) {
+      const path = folder.path ?? located.get(folder.name.toLowerCase());
+      const name = folder.path ? baseName(folder.path) : folder.name;
+      if (!path) {
+        results.push({
+          name,
+          status: "not_found",
+          message: "not found in your home folder or drives",
+        });
+        continue;
+      }
+      const known = byPath.get(normPath(path));
+      if (known) {
+        results.push({ name, status: "existing", path, projectId: known });
+        continue;
+      }
+      try {
+        const project = await bb.sdk.projects.create({
+          name,
+          source: { type: "local_path", hostId, path },
+        });
+        byPath.set(normPath(path), project.id);
+        results.push({ name, status: "created", path, projectId: project.id });
+      } catch (cause) {
+        results.push({
+          name,
+          status: "failed",
+          path,
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+      }
+    }
+
+    const projectIds = results
+      .map((r) => r.projectId)
+      .filter((id): id is string => id !== undefined);
+    if (spaceId !== undefined && projectIds.length > 0) {
+      const spaces = await readSpaces();
+      if (!spaces.some((s) => s.id === spaceId)) {
+        throw new Error(`No space with id ${spaceId}`);
+      }
+      const next = spaces.map((space) =>
+        space.id === spaceId
+          ? {
+              ...space,
+              projectIds: [...new Set([...space.projectIds, ...projectIds])],
+            }
+          : space,
+      );
+      return { state: await saveSpaces(next, undefined), results };
+    }
+    const state = await getState();
+    bb.realtime.publish(SPACES_CHANGED, { activeSpaceId: state.activeSpaceId });
+    return { state, results };
+  }
+
   bb.rpc.register(rpcContract, {
+    folders_add: ({ folders, spaceId }) => addFolders(folders, spaceId),
     state_get: () => getState(),
     space_switch: ({ spaceId }) => switchTo(spaceId),
     spaces_off: () => showAll(),
@@ -279,6 +522,8 @@ export default async function plugin(bb: BbPluginApi) {
     "  bb space list [--json]     List spaces; * marks the current one",
     "  bb space <name|number>     Switch to a space",
     "  bb space off               Show all projects and restore the list's grouping",
+    "  bb space add [--space <name|number>] <folder>...",
+    "                             Make each folder (name or path) a project in a space",
   ].join("\n");
 
   bb.cli.register({
@@ -290,6 +535,11 @@ export default async function plugin(bb: BbPluginApi) {
         name: "off",
         summary: "Show all projects and restore the thread list's grouping",
         usage: "bb space off [--json]",
+      },
+      {
+        name: "add",
+        summary: "Create projects from folders (names or paths) and put them in a space",
+        usage: "bb space add [--space <name|number>] <folder>... [--json]",
       },
       {
         name: "switch",
@@ -323,6 +573,44 @@ export default async function plugin(bb: BbPluginApi) {
           exitCode: 0,
           stdout: json ? JSON.stringify(next) : "Showing all projects.",
         };
+      }
+      if (first === "add") {
+        // bb space add [--space <name|number>] <folder name|path>...
+        let rest = args.slice(1);
+        let spaceQuery: string | null = null;
+        const flag = rest.indexOf("--space");
+        if (flag >= 0) {
+          spaceQuery = rest[flag + 1] ?? null;
+          rest = rest.filter((_, i) => i !== flag && i !== flag + 1);
+        }
+        if (rest.length === 0) {
+          return { exitCode: 1, stderr: "Usage: bb space add [--space <name|number>] <folder>..." };
+        }
+        let space: Space | undefined;
+        if (spaceQuery !== null) {
+          const q = spaceQuery.toLowerCase();
+          space = /^\d+$/.test(q)
+            ? state.spaces[Number(q) - 1]
+            : state.spaces.find((s) => s.name.toLowerCase() === q || s.id === q);
+          if (!space) {
+            return { exitCode: 1, stderr: `No space named "${spaceQuery}". Run "bb space list".` };
+          }
+        } else if (state.activeSpaceId !== null) {
+          space = state.spaces.find((s) => s.id === state.activeSpaceId);
+        }
+        const folders = rest.slice(0, 50).map((arg) =>
+          /[\\/]/.test(arg) ? { name: baseName(arg), path: arg } : { name: arg },
+        );
+        const { results } = await addFolders(folders, space?.id);
+        if (json) return { exitCode: 0, stdout: JSON.stringify(results) };
+        const lines = results.map((r) =>
+          r.status === "created" || r.status === "existing"
+            ? `${r.status === "created" ? "+" : "="} ${r.name}  ${r.path}`
+            : `! ${r.name}  ${r.message ?? r.status}`,
+        );
+        if (space) lines.push(`Space: ${space.name}`);
+        const failed = results.some((r) => r.status === "not_found" || r.status === "failed");
+        return { exitCode: failed ? 1 : 0, stdout: lines.join("\n") };
       }
       const nameArgs = first === "switch" ? args.slice(1) : args;
       const query = nameArgs.join(" ").trim().toLowerCase();
