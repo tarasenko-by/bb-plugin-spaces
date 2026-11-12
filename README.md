@@ -17,7 +17,7 @@ On first run Spaces creates two empty spaces, Work and Personal, and changes not
 | Where | What |
 | --- | --- |
 | Sidebar header | Space button with its icon; click for the menu |
-| Menu | Spaces (⌃⌥1…⌃⌥9), **All projects**, **Edit Spaces…** |
+| Menu | Spaces (Ctrl + Alt + 1…9 on Windows and Linux, ⌃ ⌥ 1…9 on macOS), **All projects**, **Edit Spaces…** |
 | Edit Spaces | Name, icon, order and projects of each space; drag folders in to add projects; the More setting |
 | Command palette | Switch to space N, Next space, Previous space, Show all projects, Edit Spaces… |
 | CLI | `bb space list`, `bb space <name\|number>`, `bb space off`, `bb space add [--space <name>] <folder>...` |

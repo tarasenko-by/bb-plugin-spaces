@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { getRpc, setSpacesState } from "./spaces-store.js";
 import { DEFAULT_SPACE_ICON, SPACE_ICONS } from "./space-icons.js";
 import { addDroppedFolders, useFolderDropTarget } from "./folder-drop.js";
+import { spaceShortcutLabel } from "./shortcuts.js";
 
 const MAX_SPACES = 9;
 
@@ -189,7 +190,7 @@ export function EditSpacesDialog({
                   {space.name || "Untitled"}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  ⌃⌥{index + 1}
+                  {spaceShortcutLabel(index)}
                 </span>
               </button>
             ))}

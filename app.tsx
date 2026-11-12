@@ -2,7 +2,7 @@
 //
 // Registers a sidebar navigation that is bb's Rail (forked from the bundled
 // Navigation plugin, app/nav/) plus an Arc-style space switcher in the
-// sidebar header, and palette commands with ⌃⌥1…⌃⌥9 shortcuts.
+// sidebar header, and palette commands with Control+Alt+1…9 shortcuts (⌃⌥ on macOS).
 import {
   definePluginApp,
   type ExperimentalSidebarHeaderProps,

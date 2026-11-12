@@ -28,11 +28,8 @@ import {
   useSpacesState,
 } from "./spaces-store.js";
 
-export const SPACE_SHORTCUT_COUNT = 9;
-
-export function spaceShortcutLabel(index: number): string | null {
-  return index < SPACE_SHORTCUT_COUNT ? `⌃⌥${index + 1}` : null;
-}
+export { SPACE_SHORTCUT_COUNT, spaceShortcutLabel } from "./shortcuts.js";
+import { spaceShortcutLabel } from "./shortcuts.js";
 
 function reportError(cause: unknown) {
   toast.error(
