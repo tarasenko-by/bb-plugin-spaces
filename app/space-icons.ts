@@ -4,7 +4,8 @@ export const SPACE_ICONS = [
   "Laptop", "Home", "Coffee", "Star", "Globe", "Code", "Terminal", "Brain",
   "Beaker", "Palette", "Puzzle", "Layers", "Folder", "GitBranch", "Bug", "Bot",
   "Target", "Toolbox", "Workflow", "Zap", "Calendar", "Mail", "ChartColumn",
-  "MessageSquare", "UserRound", "Lock", "Cloud", "Smartphone",
+  "MessageSquare", "UserRound", "Lock", "Cloud", "Smartphone", "Megaphone02",
+  "News01", "Github", "Mic", "Explore",
 ] as const;
 
 export const DEFAULT_SPACE_ICON = "Layers";
