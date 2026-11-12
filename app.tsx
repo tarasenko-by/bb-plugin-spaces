@@ -8,6 +8,7 @@ import {
   type ExperimentalSidebarHeaderProps,
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
+import { registerSpaceIcons } from "./app/custom-icons.js";
 import { Rail, RailNewThreadButton } from "./app/nav/Rail.js";
 import { NewThreadRow, useNewThreadRowHost } from "./app/NewThreadRow.js";
 import { SPACE_SHORTCUT_COUNT, SpaceSwitcher } from "./app/SpaceSwitcher.js";
@@ -43,6 +44,8 @@ function report(cause: unknown) {
 }
 
 export default definePluginApp((app) => {
+  registerSpaceIcons(app);
+
   app.slots.experimental_sidebarNavigation({
     id: "rail",
     title: "Rail with Spaces",

@@ -1,11 +1,18 @@
-// Icons offered in Edit Spaces. All are names bb's own icon set renders;
-// an unknown name would fall back to a lightning bolt.
+// Icons offered in Edit Spaces: three rows of 11 — work, making things, life.
+// Plain names are bb's built-in icons; "Spaces…" names are registered by this
+// plugin (app/custom-icons.tsx). An unknown name falls back to a lightning
+// bolt, so names that left this list still render for spaces that use them.
 export const SPACE_ICONS = [
-  "Laptop", "Home", "Coffee", "Star", "Globe", "Code", "Terminal", "Brain",
-  "Beaker", "Palette", "Puzzle", "Layers", "Folder", "GitBranch", "Bug", "Bot",
-  "Target", "Toolbox", "Workflow", "Zap", "Calendar", "Mail", "ChartColumn",
-  "MessageSquare", "UserRound", "Lock", "Cloud", "Smartphone", "Megaphone02",
-  "News01", "Github", "Mic", "Explore",
+  // Work
+  "SpacesBriefcase", "Laptop", "SpacesOffice", "Code", "SpacesRocket",
+  "ChartColumn", "Megaphone02", "Target", "Toolbox", "SpacesTeam",
+  "SpacesWallet",
+  // Making and learning
+  "Palette", "SpacesPen", "SpacesCamera", "SpacesMusic", "Mic", "SpacesVideo",
+  "News01", "SpacesBook", "SpacesGraduation", "SpacesIdea", "Brain",
+  // Life
+  "Home", "Coffee", "SpacesHeart", "SpacesGamepad", "SpacesDumbbell",
+  "SpacesAirplane", "Globe", "SpacesLeaf", "SpacesMoon", "Star", "Layers",
 ] as const;
 
 export const DEFAULT_SPACE_ICON = "Layers";

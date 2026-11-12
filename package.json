@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-spaces",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Arc-style spaces for the bb sidebar.",
   "license": "MIT",
   "author": "Siarhei Tarasenka (https://github.com/tarasenko-by)",
@@ -29,6 +29,8 @@
     "app": "./app.tsx"
   },
   "dependencies": {
+    "@hugeicons/core-free-icons": "^4.4.0",
+    "@hugeicons/react": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.4.1",
     "@radix-ui/react-label": "^2.1.17",
     "@radix-ui/react-slot": "^1.5.0",
