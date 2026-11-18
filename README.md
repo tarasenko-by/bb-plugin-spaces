@@ -2,6 +2,16 @@
 
 Arc-style spaces for the [bb](https://github.com/get-bb/bb) sidebar. Put your projects into spaces such as **Work** and **Personal**, then switch from the sidebar header: the thread list shows only the current space's projects and their threads.
 
+## Screenshots
+
+| Menu in the sidebar header | Icons in the sidebar header |
+| --- | --- |
+| ![Space menu open in the sidebar header](docs/switcher-menu.png) | ![Row of space icons in the sidebar header](docs/switcher-icons.png) |
+
+| A tint per space | Edit Spaces |
+| --- | --- |
+| ![Sidebar of three spaces tinted blue, green and purple](docs/sidebar-tints.png) | ![Edit Spaces with icon, tint, projects and the Sidebar header setting](docs/edit-spaces.png) |
+
 ## Install
 
 ```sh
